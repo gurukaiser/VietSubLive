@@ -13,12 +13,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -30,13 +34,22 @@ jobs:
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "Cannot find sdkmanager at $SDKMANAGER"
+            exit 1
+          fi
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses
+          set -o pipefail
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract Android project
         run: |
           mkdir project
           unzip VietSubLive-Android-CloudBuild.zip -d project
+          test -f project/settings.gradle.kts
+          test -f project/app/build.gradle.kts
 
       - name: Build APK
         run: gradle --no-daemon -p project assembleDebug
